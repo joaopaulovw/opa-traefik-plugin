@@ -1,4 +1,4 @@
-// Package opaplugin
+// Package opaplugin traefik plugin.
 package opaplugin
 
 import (
@@ -76,6 +76,11 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 		bytes, err := json.Marshal(token)
 
+		if err != nil {
+			http.Error(rw, "InternalServerError", http.StatusInternalServerError)
+			return
+		}
+
 		if json.Unmarshal(bytes, &input.Token) != nil {
 			http.Error(rw, "InternalServerError", http.StatusInternalServerError)
 			return
@@ -97,7 +102,7 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	opa.next.ServeHTTP(rw, req)
 }
 
-// Input represent query opa input
+// Input represent query opa input.
 type Input struct {
 	Host       string                 `json:"host"`
 	Method     string                 `json:"method"`
