@@ -1,4 +1,4 @@
-package opa_plugin
+package opaplugin
 
 import (
 	"context"

@@ -1,4 +1,4 @@
-package opa_plugin_test
+package opaplugin_test
 
 import (
 	"context"
