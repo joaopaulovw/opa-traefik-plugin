@@ -3,14 +3,15 @@ package opaplugin
 
 import (
 	"context"
-	"github.com/MicahParks/keyfunc/v2"
-	"github.com/goccy/go-json"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/open-policy-agent/opa/rego"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/MicahParks/keyfunc/v2"
+	"github.com/goccy/go-json"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/open-policy-agent/opa/rego"
 )
 
 // Config the plugin configuration.
@@ -63,7 +64,6 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 
 		token, err := parseJWT(bearerToken, opa.jwks)
-
 		if err != nil {
 			http.Error(rw, "Unauthorized", http.StatusUnauthorized)
 			return
@@ -75,7 +75,6 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 
 		bytes, err := json.Marshal(token)
-
 		if err != nil {
 			http.Error(rw, "InternalServerError", http.StatusInternalServerError)
 			return
@@ -113,9 +112,8 @@ type Input struct {
 }
 
 // validatePolicies validate policies.
-func validatePolicies(allow string, bundlePath string, input *Input) (bool, error) {
+func validatePolicies(allow, bundlePath string, input *Input) (bool, error) {
 	results, err := opaQuery(allow, bundlePath, input)
-
 	if err != nil {
 		return false, err
 	}
@@ -128,11 +126,10 @@ func validatePolicies(allow string, bundlePath string, input *Input) (bool, erro
 }
 
 // opaQuery return rego.ResultSet.
-func opaQuery(allow string, bundlePath string, input *Input) (rego.ResultSet, error) {
+func opaQuery(allow, bundlePath string, input *Input) (rego.ResultSet, error) {
 	ctx := context.Background()
 
 	query, err := rego.New(rego.Query(allow), rego.LoadBundle(bundlePath)).PrepareForEval(ctx)
-
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +138,7 @@ func opaQuery(allow string, bundlePath string, input *Input) (rego.ResultSet, er
 }
 
 // parseJWT return parsed token.
-func parseJWT(bearerToken string, jwksURL string) (*jwt.Token, error) {
+func parseJWT(bearerToken, jwksURL string) (*jwt.Token, error) {
 	ctx := context.Background()
 
 	options := keyfunc.Options{
@@ -153,7 +150,6 @@ func parseJWT(bearerToken string, jwksURL string) (*jwt.Token, error) {
 	}
 
 	jwks, err := keyfunc.Get(jwksURL, options)
-
 	if err != nil {
 		return nil, err
 	}
