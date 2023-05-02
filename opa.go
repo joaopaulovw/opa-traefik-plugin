@@ -3,12 +3,12 @@ package opaplugin
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
-	"encoding/json"
 	"github.com/MicahParks/keyfunc/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/open-policy-agent/opa/rego"
