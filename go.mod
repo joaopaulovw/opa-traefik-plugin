@@ -4,7 +4,6 @@ go 1.19
 
 require (
 	github.com/MicahParks/keyfunc/v2 v2.0.1
-	github.com/goccy/go-json v0.9.7
 	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/open-policy-agent/opa v0.52.0
 )
