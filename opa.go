@@ -1,3 +1,4 @@
+// Package opaplugin
 package opaplugin
 
 import (
@@ -96,6 +97,7 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	opa.next.ServeHTTP(rw, req)
 }
 
+// Input represent query opa input
 type Input struct {
 	Host       string                 `json:"host"`
 	Method     string                 `json:"method"`
