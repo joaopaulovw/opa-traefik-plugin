@@ -1,6 +1,6 @@
 module github.com/joaopaulovw/opa-traefik-plugin
 
-go 1.20
+go 1.19
 
 require (
 	github.com/MicahParks/keyfunc/v2 v2.0.1
