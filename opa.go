@@ -56,7 +56,7 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if len(authorization) > 0 {
 		bearerToken := strings.Split(authorization, " ")[1]
 
-		if len(opa.jwks) <= 0 {
+		if len(opa.jwks) == 0 {
 			http.Error(rw, "BadRequest", http.StatusBadRequest)
 			return
 		}
@@ -81,7 +81,7 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	if (len(opa.allow) <= 0) || (len(opa.bundlePath) <= 0) {
+	if (len(opa.allow) == 0) || (len(opa.bundlePath) == 0) {
 		http.Error(rw, "BadRequest", http.StatusBadRequest)
 		return
 	}
@@ -105,6 +105,7 @@ type Input struct {
 	Token      map[string]interface{} `json:"token"`
 }
 
+// validatePolicies validate policies.
 func validatePolicies(allow string, bundlePath string, input *Input) (bool, error) {
 	results, err := opaQuery(allow, bundlePath, input)
 
@@ -119,6 +120,7 @@ func validatePolicies(allow string, bundlePath string, input *Input) (bool, erro
 	return true, nil
 }
 
+// opaQuery return rego.ResultSet.
 func opaQuery(allow string, bundlePath string, input *Input) (rego.ResultSet, error) {
 	ctx := context.Background()
 
@@ -131,6 +133,7 @@ func opaQuery(allow string, bundlePath string, input *Input) (rego.ResultSet, er
 	return query.Eval(ctx, rego.EvalInput(input))
 }
 
+// parseJWT return parsed token.
 func parseJWT(bearerToken string, jwksURL string) (*jwt.Token, error) {
 	ctx := context.Background()
 
