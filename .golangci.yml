@@ -62,6 +62,7 @@ linters:
     - forbidigo
     - varnamelen
     - contextcheck
+    - nestif
 
 issues:
   exclude-use-default: false
