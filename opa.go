@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"encoding/json"
 	"github.com/MicahParks/keyfunc/v2"
-	"github.com/goccy/go-json"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/open-policy-agent/opa/rego"
 )
