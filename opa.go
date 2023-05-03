@@ -4,6 +4,8 @@ package opaplugin
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -45,7 +47,7 @@ func New(_ context.Context, next http.Handler, config *Config, _ string) (http.H
 }
 
 func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	input := &Input{
+	input := Input{
 		Host:       req.Host,
 		Method:     req.Method,
 		Path:       strings.Split(req.URL.Path, "/")[1:],
@@ -58,43 +60,40 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if len(authorization) > 0 {
 		bearerToken := strings.Split(authorization, " ")[1]
 
-		if len(opa.jwks) == 0 {
-			http.Error(rw, "BadRequest", http.StatusBadRequest)
-			return
-		}
-
-		token, err := parseJWT(bearerToken, opa.jwks)
+		token, err := opa.ParseJWT(bearerToken)
 		if err != nil {
-			http.Error(rw, "Unauthorized", http.StatusUnauthorized)
+			http.Error(rw, fmt.Sprintf("Unauthorized: %s", err.Error()), http.StatusUnauthorized)
 			return
 		}
 
 		if !token.Valid {
-			http.Error(rw, "Unauthorized", http.StatusUnauthorized)
+			http.Error(rw, "Unauthorized: invalid token", http.StatusUnauthorized)
 			return
 		}
 
 		bytes, err := json.Marshal(token)
 		if err != nil {
-			http.Error(rw, "InternalServerError", http.StatusInternalServerError)
+			http.Error(rw, fmt.Sprintf("InternalServerError: %s", err.Error()), http.StatusInternalServerError)
 			return
 		}
 
-		if json.Unmarshal(bytes, &input.Token) != nil {
-			http.Error(rw, "InternalServerError", http.StatusInternalServerError)
+		err = json.Unmarshal(bytes, &input.Token)
+
+		if err != nil {
+			http.Error(rw, fmt.Sprintf("InternalServerError: %s", err.Error()), http.StatusInternalServerError)
 			return
 		}
 	}
 
 	if (len(opa.allow) == 0) || (len(opa.bundlePath) == 0) {
-		http.Error(rw, "BadRequest", http.StatusBadRequest)
+		http.Error(rw, "Forbidden: opa 'allow' or 'bundlePath' not found", http.StatusForbidden)
 		return
 	}
 
-	result, err := validatePolicies(opa.allow, opa.bundlePath, input)
+	result, err := opa.ValidatePolicies(input)
 
 	if err != nil || !result {
-		http.Error(rw, "BadRequest", http.StatusForbidden)
+		http.Error(rw, fmt.Sprintf("Forbidden: %s", err.Error()), http.StatusForbidden)
 		return
 	}
 
@@ -111,9 +110,9 @@ type Input struct {
 	Token      map[string]interface{} `json:"token"`
 }
 
-// validatePolicies validate policies.
-func validatePolicies(allow, bundlePath string, input *Input) (bool, error) {
-	results, err := opaQuery(allow, bundlePath, input)
+// ValidatePolicies validate policies.
+func (opa *Opa) ValidatePolicies(input Input) (bool, error) {
+	results, err := opaQuery(opa.allow, opa.bundlePath, input)
 	if err != nil {
 		return false, err
 	}
@@ -126,7 +125,7 @@ func validatePolicies(allow, bundlePath string, input *Input) (bool, error) {
 }
 
 // opaQuery return rego.ResultSet.
-func opaQuery(allow, bundlePath string, input *Input) (rego.ResultSet, error) {
+func opaQuery(allow, bundlePath string, input Input) (rego.ResultSet, error) {
 	ctx := context.Background()
 
 	query, err := rego.New(rego.Query(allow), rego.LoadBundle(bundlePath)).PrepareForEval(ctx)
@@ -137,8 +136,12 @@ func opaQuery(allow, bundlePath string, input *Input) (rego.ResultSet, error) {
 	return query.Eval(ctx, rego.EvalInput(input))
 }
 
-// parseJWT return parsed token.
-func parseJWT(bearerToken, jwksURL string) (*jwt.Token, error) {
+// ParseJWT return parsed token.
+func (opa *Opa) ParseJWT(bearerToken string) (*jwt.Token, error) {
+	if len(opa.jwks) == 0 {
+		return nil, errors.New("opa 'jwks' not founded")
+	}
+
 	ctx := context.Background()
 
 	options := keyfunc.Options{
@@ -149,7 +152,7 @@ func parseJWT(bearerToken, jwksURL string) (*jwt.Token, error) {
 		RefreshUnknownKID: true,
 	}
 
-	jwks, err := keyfunc.Get(jwksURL, options)
+	jwks, err := keyfunc.Get(opa.jwks, options)
 	if err != nil {
 		return nil, err
 	}
