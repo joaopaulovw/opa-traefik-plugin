@@ -2,10 +2,12 @@
 package opaplugin
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -13,14 +15,13 @@ import (
 
 	"github.com/MicahParks/keyfunc/v2"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/open-policy-agent/opa/rego"
 )
 
 // Config the plugin configuration.
 type Config struct {
-	BundlePath string
-	Allow      string
-	Jwks       string
+	Endpoint string
+	Allow    string
+	Jwks     string
 }
 
 // CreateConfig creates the default plugin configuration.
@@ -30,19 +31,19 @@ func CreateConfig() *Config {
 
 // Opa opa Opa plugin.
 type Opa struct {
-	next       http.Handler
-	bundlePath string
-	allow      string
-	jwks       string
+	next     http.Handler
+	endpoint string
+	allow    string
+	jwks     string
 }
 
 // New created a new Opa plugin.
 func New(_ context.Context, next http.Handler, config *Config, _ string) (http.Handler, error) {
 	return &Opa{
-		next:       next,
-		bundlePath: config.BundlePath,
-		allow:      config.Allow,
-		jwks:       config.Jwks,
+		next:     next,
+		endpoint: config.Endpoint,
+		allow:    config.Allow,
+		jwks:     config.Jwks,
 	}, nil
 }
 
@@ -71,13 +72,13 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		bytes, err := json.Marshal(token)
+		bts, err := json.Marshal(token)
 		if err != nil {
 			http.Error(rw, fmt.Sprintf("InternalServerError: %s", err.Error()), http.StatusInternalServerError)
 			return
 		}
 
-		err = json.Unmarshal(bytes, &input.Token)
+		err = json.Unmarshal(bts, &input.Token)
 
 		if err != nil {
 			http.Error(rw, fmt.Sprintf("InternalServerError: %s", err.Error()), http.StatusInternalServerError)
@@ -85,7 +86,7 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	if (len(opa.allow) == 0) || (len(opa.bundlePath) == 0) {
+	if (len(opa.allow) == 0) || (len(opa.endpoint) == 0) {
 		http.Error(rw, "Forbidden: opa 'allow' or 'bundlePath' not found", http.StatusForbidden)
 		return
 	}
@@ -100,7 +101,7 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	opa.next.ServeHTTP(rw, req)
 }
 
-// Input represent query opa input.
+// Input represent opa input.
 type Input struct {
 	Host       string                 `json:"host"`
 	Method     string                 `json:"method"`
@@ -110,30 +111,51 @@ type Input struct {
 	Token      map[string]interface{} `json:"token"`
 }
 
+// Body represent opa body post request.
+type Body struct {
+	Input Input `json:"input"`
+}
+
+// Response represent opa body post response.
+type Response struct {
+	Result map[string]json.RawMessage `json:"result"`
+}
+
 // ValidatePolicies validate policies.
 func (opa *Opa) ValidatePolicies(input Input) (bool, error) {
-	results, err := opaQuery(opa.allow, opa.bundlePath, input)
+	body := Body{
+		Input: input,
+	}
+
+	data, err := json.Marshal(body)
 	if err != nil {
 		return false, err
 	}
 
-	if !results.Allowed() {
-		return false, nil
-	}
-
-	return true, nil
-}
-
-// opaQuery return rego.ResultSet.
-func opaQuery(allow, bundlePath string, input Input) (rego.ResultSet, error) {
-	ctx := context.Background()
-
-	query, err := rego.New(rego.Query(allow), rego.LoadBundle(bundlePath)).PrepareForEval(ctx)
+	response, err := http.Post(opa.endpoint, "application/json", bytes.NewBuffer(data))
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 
-	return query.Eval(ctx, rego.EvalInput(input))
+	responseBody, err := io.ReadAll(response.Body)
+	if err != nil {
+		return false, err
+	}
+
+	var responseData Response
+	err = json.Unmarshal(responseBody, &responseData)
+	if err != nil {
+		return false, err
+	}
+
+	allowResponseData := responseData.Result[opa.allow]
+
+	var allow bool
+	if err = json.Unmarshal(allowResponseData, &allow); err != nil {
+		return false, err
+	}
+
+	return allow, nil
 }
 
 // ParseJWT return parsed token.
