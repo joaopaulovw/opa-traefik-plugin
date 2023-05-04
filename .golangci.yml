@@ -65,6 +65,7 @@ linters:
     - nestif
     - gosimple
     - gosec
+    - revive
 
 issues:
   exclude-use-default: false
