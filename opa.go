@@ -14,9 +14,9 @@ import (
 
 // Config the plugin configuration.
 type Config struct {
-	Endpoint string
-	Allow    string
-	Jwks     string
+	Endpoint string `json:"endpoint,omitempty"`
+	Allow    string `json:"allow,omitempty"`
+	Jwks     string `json:"jwks,omitempty"`
 }
 
 // CreateConfig creates the default plugin configuration.
