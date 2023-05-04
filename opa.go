@@ -5,16 +5,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
-
-	"github.com/MicahParks/keyfunc/v2"
-	"github.com/golang-jwt/jwt/v5"
 )
 
 // Config the plugin configuration.
@@ -61,29 +56,36 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if len(authorization) > 0 {
 		bearerToken := strings.Split(authorization, " ")[1]
 
-		token, err := opa.ParseJWT(bearerToken)
-		if err != nil {
-			http.Error(rw, fmt.Sprintf("Unauthorized: %s", err.Error()), http.StatusUnauthorized)
+		token, parseJWTErr := parseJWT(bearerToken)
+		if parseJWTErr != nil {
+			http.Error(rw, fmt.Sprintf("Unauthorized: %s", parseJWTErr.Error()), http.StatusUnauthorized)
 			return
 		}
 
-		if !token.Valid {
+		jwk, fetchKeysErr := fetchKeys(opa.jwks)
+		if fetchKeysErr != nil {
+			return
+		}
+
+		tokenValid := false
+		for _, key := range jwk.keys {
+			pubkey, err := key.GetPublicKey()
+			if err != nil {
+				continue
+			}
+
+			if token.Verify(pubkey) {
+				tokenValid = true
+				break
+			}
+		}
+
+		if !tokenValid {
 			http.Error(rw, "Unauthorized: invalid token", http.StatusUnauthorized)
 			return
 		}
 
-		bts, err := json.Marshal(token)
-		if err != nil {
-			http.Error(rw, fmt.Sprintf("InternalServerError: %s", err.Error()), http.StatusInternalServerError)
-			return
-		}
-
-		err = json.Unmarshal(bts, &input.Token)
-
-		if err != nil {
-			http.Error(rw, fmt.Sprintf("InternalServerError: %s", err.Error()), http.StatusInternalServerError)
-			return
-		}
+		input.TokenPayload = token.payload
 	}
 
 	if (len(opa.allow) == 0) || (len(opa.endpoint) == 0) {
@@ -91,10 +93,10 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	result, err := opa.ValidatePolicies(input)
+	result, validatePoliciesErr := validatePolicies(opa.endpoint, opa.allow, input)
 
-	if err != nil || !result {
-		http.Error(rw, fmt.Sprintf("Forbidden: %s", err.Error()), http.StatusForbidden)
+	if validatePoliciesErr != nil || !result {
+		http.Error(rw, fmt.Sprintf("Forbidden: %s", validatePoliciesErr.Error()), http.StatusForbidden)
 		return
 	}
 
@@ -103,12 +105,12 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 // Input represent opa input.
 type Input struct {
-	Host       string                 `json:"host"`
-	Method     string                 `json:"method"`
-	Path       []string               `json:"path"`
-	Parameters url.Values             `json:"parameters"`
-	Headers    map[string][]string    `json:"headers"`
-	Token      map[string]interface{} `json:"token"`
+	Host         string                 `json:"host"`
+	Method       string                 `json:"method"`
+	Path         []string               `json:"path"`
+	Parameters   url.Values             `json:"parameters"`
+	Headers      map[string][]string    `json:"headers"`
+	TokenPayload map[string]interface{} `json:"tokenPayload"`
 }
 
 // Body represent opa body post request.
@@ -121,63 +123,38 @@ type Response struct {
 	Result map[string]json.RawMessage `json:"result"`
 }
 
-// ValidatePolicies validate policies.
-func (opa *Opa) ValidatePolicies(input Input) (bool, error) {
+// validatePolicies validate policies.
+func validatePolicies(endpoint, allow string, input Input) (bool, error) {
 	body := Body{
 		Input: input,
 	}
 
-	data, err := json.Marshal(body)
-	if err != nil {
-		return false, err
+	data, MarshalErr := json.Marshal(body)
+	if MarshalErr != nil {
+		return false, MarshalErr
 	}
 
-	response, err := http.Post(opa.endpoint, "application/json", bytes.NewBuffer(data))
-	if err != nil {
-		return false, err
+	response, postErr := http.Post(endpoint, "application/json", bytes.NewBuffer(data))
+	if postErr != nil {
+		return false, postErr
 	}
 
-	responseBody, err := io.ReadAll(response.Body)
-	if err != nil {
-		return false, err
+	responseBody, readErr := io.ReadAll(response.Body)
+	if readErr != nil {
+		return false, readErr
 	}
 
 	var responseData Response
-	err = json.Unmarshal(responseBody, &responseData)
-	if err != nil {
-		return false, err
+	if bodyUnmarshalErr := json.Unmarshal(responseBody, &responseData); bodyUnmarshalErr != nil {
+		return false, bodyUnmarshalErr
 	}
 
-	allowResponseData := responseData.Result[opa.allow]
+	allowResponseData := responseData.Result[allow]
 
-	var allow bool
-	if err = json.Unmarshal(allowResponseData, &allow); err != nil {
-		return false, err
+	var allowed bool
+	if allowUnmarshalErr := json.Unmarshal(allowResponseData, &allowed); allowUnmarshalErr != nil {
+		return false, allowUnmarshalErr
 	}
 
-	return allow, nil
-}
-
-// ParseJWT return parsed token.
-func (opa *Opa) ParseJWT(bearerToken string) (*jwt.Token, error) {
-	if len(opa.jwks) == 0 {
-		return nil, errors.New("opa 'jwks' not founded")
-	}
-
-	ctx := context.Background()
-
-	options := keyfunc.Options{
-		Ctx:               ctx,
-		RefreshInterval:   time.Hour,
-		RefreshRateLimit:  time.Minute * 5,
-		RefreshTimeout:    time.Second * 10,
-		RefreshUnknownKID: true,
-	}
-
-	jwks, err := keyfunc.Get(opa.jwks, options)
-	if err != nil {
-		return nil, err
-	}
-
-	return jwt.Parse(bearerToken, jwks.Keyfunc)
+	return allowed, nil
 }
