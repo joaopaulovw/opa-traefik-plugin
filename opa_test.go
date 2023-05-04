@@ -1,4 +1,4 @@
-package opaplugin_test
+package opa_traefik_plugin_test
 
 import (
 	"context"

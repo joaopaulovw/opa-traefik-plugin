@@ -1,4 +1,4 @@
-package opaplugin
+package opa_traefik_plugin
 
 import (
 	"crypto"

@@ -1,5 +1,5 @@
-// Package opaplugin traefik plugin.
-package opaplugin
+// Package opa_traefik_plugin traefik plugin.
+package opa_traefik_plugin
 
 import (
 	"bytes"
