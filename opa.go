@@ -95,9 +95,13 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	result, validatePoliciesErr := validatePolicies(opa.endpoint, opa.allow, input)
-
-	if validatePoliciesErr != nil || !result {
+	if validatePoliciesErr != nil {
 		http.Error(rw, fmt.Sprintf("Forbidden: %s", validatePoliciesErr.Error()), http.StatusForbidden)
+		return
+	}
+
+	if !result {
+		http.Error(rw, "Forbidden", http.StatusForbidden)
 		return
 	}
 
