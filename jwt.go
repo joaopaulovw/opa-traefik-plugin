@@ -29,8 +29,11 @@ func (token *Token) Verify(publicKey *rsa.PublicKey) bool {
 // parseJWT converts bearer token string to Token.
 func parseJWT(bearerToken string) (*Token, error) {
 	bearerTokenSplit := strings.Split(bearerToken, " ")
-	tokenSplit := strings.Split(bearerTokenSplit[1], ".")
+	if len(bearerTokenSplit) != 2 {
+		return nil, fmt.Errorf("invalid token")
+	}
 
+	tokenSplit := strings.Split(bearerTokenSplit[1], ".")
 	if len(tokenSplit) != 3 {
 		return nil, fmt.Errorf("invalid token")
 	}
@@ -60,6 +63,8 @@ func parseJWT(bearerToken string) (*Token, error) {
 	if unmarshalErr != nil {
 		return nil, unmarshalErr
 	}
+
+	fmt.Printf(string(payload))
 
 	return token, nil
 }

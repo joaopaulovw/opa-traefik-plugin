@@ -54,9 +54,7 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	authorization := req.Header.Get("Authorization")
 
 	if len(authorization) > 0 {
-		bearerToken := strings.Split(authorization, " ")[1]
-
-		token, parseJWTErr := parseJWT(bearerToken)
+		token, parseJWTErr := parseJWT(authorization)
 		if parseJWTErr != nil {
 			http.Error(rw, fmt.Sprintf("Unauthorized: %s", parseJWTErr.Error()), http.StatusUnauthorized)
 			return
