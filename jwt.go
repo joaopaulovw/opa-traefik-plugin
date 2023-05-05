@@ -64,8 +64,6 @@ func parseJWT(bearerToken string) (*Token, error) {
 		return nil, unmarshalErr
 	}
 
-	fmt.Printf(string(payload))
-
 	return token, nil
 }
 
