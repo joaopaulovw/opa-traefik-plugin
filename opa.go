@@ -64,6 +64,7 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 		jwk, fetchKeysErr := fetchKeys(opa.jwks)
 		if fetchKeysErr != nil {
+			http.Error(rw, fmt.Sprintf("InternalServerError: %s", fetchKeysErr.Error()), http.StatusInternalServerError)
 			return
 		}
 
