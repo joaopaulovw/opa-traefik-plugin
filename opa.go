@@ -89,7 +89,11 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			fmt.Printf("error: '%s'", err.Error())
 		}
 
-		fmt.Printf("public key: '%T'", publicKey.Size())
+		if publicKey == nil {
+			fmt.Printf("public key is nil")
+		} else {
+			fmt.Printf("public key: '%T'", publicKey.Size())
+		}
 
 		if !tokenValid {
 			http.Error(rw, "Unauthorized: invalid token", http.StatusUnauthorized)
