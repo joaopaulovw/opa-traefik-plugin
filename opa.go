@@ -82,6 +82,8 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		keys, err := json.Marshal(jwk)
 		if err == nil {
 			fmt.Printf("fetch keys result: '%s'", string(keys))
+		} else {
+			fmt.Printf("error: '%s'", err.Error())
 		}
 
 		if !tokenValid {
