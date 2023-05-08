@@ -70,12 +70,15 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		for _, key := range jwk.keys {
 			pubkey, err := key.GetPublicKey()
 			if err != nil {
+				fmt.Printf("OPA Plugin Error: %s", err.Error())
 				continue
 			}
 
 			if token.Verify(pubkey) {
 				tokenValid = true
 				break
+			} else {
+				fmt.Printf("OPA Plugin Error: invalid token (pk: %T)", pubkey.Size())
 			}
 		}
 
