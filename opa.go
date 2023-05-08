@@ -4,6 +4,7 @@ package opa_traefik_plugin
 import (
 	"bytes"
 	"context"
+	"crypto/rsa"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -67,11 +68,13 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 
 		tokenValid := false
+		var publicKey *rsa.PublicKey
 		for _, key := range jwk.keys {
 			pubkey, err := key.GetPublicKey()
 			if err != nil {
 				continue
 			}
+			publicKey = pubkey
 
 			if token.Verify(pubkey) {
 				tokenValid = true
@@ -86,7 +89,7 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			fmt.Printf("error: '%s'", err.Error())
 		}
 
-		fmt.Printf("public key: '%s'", pubkey)
+		fmt.Printf("public key: '%T'", publicKey.Size())
 
 		if !tokenValid {
 			http.Error(rw, "Unauthorized: invalid token", http.StatusUnauthorized)
