@@ -72,17 +72,22 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	authorization := req.Header.Get("Authorization")
 
 	if len(authorization) > 0 {
+		LoggerDEBUG.Println("parse jwt started!")
 		token, parseJWTErr := parseJWT(authorization)
 		if parseJWTErr != nil {
 			http.Error(rw, fmt.Sprintf("Unauthorized: %s", parseJWTErr.Error()), http.StatusUnauthorized)
 			return
 		}
 
+		LoggerDEBUG.Println("fetch keys started!")
+
 		jwk, fetchKeysErr := fetchKeys(opa.jwks)
 		if fetchKeysErr != nil {
 			http.Error(rw, fmt.Sprintf("InternalServerError: %s", fetchKeysErr.Error()), http.StatusInternalServerError)
 			return
 		}
+
+		LoggerDEBUG.Println("token verification started!")
 
 		tokenValid := false
 		for _, key := range jwk.keys {
