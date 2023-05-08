@@ -19,11 +19,11 @@ import (
 // nolint
 var (
 	// LoggerDEBUG level.
-	LoggerDEBUG = log.New(ioutil.Discard, "DEBUG: ldapAuth: ", log.Ldate|log.Ltime|log.Lshortfile)
+	LoggerDEBUG = log.New(ioutil.Discard, "opa: debug:", log.Ldate|log.Ltime|log.Lshortfile)
 	// LoggerINFO level.
-	LoggerINFO = log.New(ioutil.Discard, "INFO: ldapAuth: ", log.Ldate|log.Ltime|log.Lshortfile)
+	LoggerINFO = log.New(ioutil.Discard, "opa: info:", log.Ldate|log.Ltime|log.Lshortfile)
 	// LoggerERROR level.
-	LoggerERROR = log.New(ioutil.Discard, "ERROR: ldapAuth: ", log.Ldate|log.Ltime|log.Lshortfile)
+	LoggerERROR = log.New(ioutil.Discard, "opa: error:", log.Ldate|log.Ltime|log.Lshortfile)
 )
 
 // Config the plugin configuration.
