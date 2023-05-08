@@ -86,6 +86,8 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			fmt.Printf("error: '%s'", err.Error())
 		}
 
+		fmt.Printf("public key: '%s'", pubkey)
+
 		if !tokenValid {
 			http.Error(rw, "Unauthorized: invalid token", http.StatusUnauthorized)
 			return
