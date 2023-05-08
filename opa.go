@@ -85,7 +85,7 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 		tokenValid := false
 		var publicKey *rsa.PublicKey
-		for _, key := range jwk.keys {
+		for _, key := range jwk.Keys {
 			pubkey, err := key.GetPublicKey()
 			if err != nil {
 				continue

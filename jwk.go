@@ -12,29 +12,29 @@ import (
 
 // JWK representation.
 type JWK struct {
-	keys []Key
+	Keys []Key `json:"keys"`
 }
 
 // Key of JWK representation.
 type Key struct {
-	// kid string
-	// use string
-	// kty string
-	// alg string
-	e string
-	n string
-	// x5t string
-	// x5c []string
+	Kid string   `json:"kid"`
+	Use string   `json:"use"`
+	Kty string   `json:"kty"`
+	Alg string   `json:"alg"`
+	E   string   `json:"e"`
+	N   string   `json:"n"`
+	X5t string   `json:"x5T"`
+	X5c []string `json:"x5C"`
 }
 
 // GetPublicKey return public key.
 func (key *Key) GetPublicKey() (*rsa.PublicKey, error) {
-	nBytes, nEncodingErr := base64.RawURLEncoding.DecodeString(key.n)
+	nBytes, nEncodingErr := base64.RawURLEncoding.DecodeString(key.N)
 	if nEncodingErr != nil {
 		return nil, nEncodingErr
 	}
 
-	eBytes, eEncodingErr := base64.RawURLEncoding.DecodeString(key.e)
+	eBytes, eEncodingErr := base64.RawURLEncoding.DecodeString(key.E)
 	if eEncodingErr != nil {
 		return nil, eEncodingErr
 	}
