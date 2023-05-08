@@ -8,9 +8,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
+)
+
+// nolint
+var (
+	// LoggerDEBUG level.
+	LoggerDEBUG = log.New(ioutil.Discard, "DEBUG: ldapAuth: ", log.Ldate|log.Ltime|log.Lshortfile)
+	// LoggerINFO level.
+	LoggerINFO = log.New(ioutil.Discard, "INFO: ldapAuth: ", log.Ldate|log.Ltime|log.Lshortfile)
+	// LoggerERROR level.
+	LoggerERROR = log.New(ioutil.Discard, "ERROR: ldapAuth: ", log.Ldate|log.Ltime|log.Lshortfile)
 )
 
 // Config the plugin configuration.
@@ -18,6 +31,7 @@ type Config struct {
 	Endpoint string `json:"endpoint,omitempty"`
 	Allow    string `json:"allow,omitempty"`
 	Jwks     string `json:"jwks,omitempty"`
+	LogLevel string `json:"logLevel,omitempty"`
 }
 
 // CreateConfig creates the default plugin configuration.
@@ -35,6 +49,8 @@ type Opa struct {
 
 // New created a new Opa plugin.
 func New(_ context.Context, next http.Handler, config *Config, _ string) (http.Handler, error) {
+	SetLogger(config.LogLevel)
+
 	return &Opa{
 		next:     next,
 		endpoint: config.Endpoint,
@@ -84,15 +100,15 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 		keys, err := json.Marshal(jwk)
 		if err == nil {
-			fmt.Printf("fetch keys result: '%s'", string(keys))
+			LoggerDEBUG.Printf("fetch keys result: '%s'", string(keys))
 		} else {
-			fmt.Printf("error: '%s'", err.Error())
+			LoggerDEBUG.Printf("error: '%s'", err.Error())
 		}
 
 		if publicKey == nil {
-			fmt.Printf("public key is nil")
+			LoggerDEBUG.Printf("public key is nil")
 		} else {
-			fmt.Printf("public key: '%T'", publicKey.Size())
+			LoggerDEBUG.Printf("public key: '%T'", publicKey.Size())
 		}
 
 		if !tokenValid {
@@ -176,4 +192,22 @@ func validatePolicies(endpoint, allow string, input Input) (bool, error) {
 	}
 
 	return allowed, nil
+}
+
+// SetLogger define global logger based in logLevel conf.
+func SetLogger(level string) {
+	switch level {
+	case "ERROR":
+		LoggerERROR.SetOutput(os.Stderr)
+	case "INFO":
+		LoggerERROR.SetOutput(os.Stderr)
+		LoggerINFO.SetOutput(os.Stdout)
+	case "DEBUG":
+		LoggerERROR.SetOutput(os.Stderr)
+		LoggerINFO.SetOutput(os.Stdout)
+		LoggerDEBUG.SetOutput(os.Stdout)
+	default:
+		LoggerERROR.SetOutput(os.Stderr)
+		LoggerINFO.SetOutput(os.Stdout)
+	}
 }
