@@ -70,7 +70,7 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		for _, key := range jwk.keys {
 			pubkey, err := key.GetPublicKey()
 			if err != nil {
-				fmt.Printf("OPA Plugin Error: %s", err.Error())
+				fmt.Println(fmt.Sprintf("OPA Plugin Error: %s", err.Error()))
 				continue
 			}
 
@@ -78,7 +78,7 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 				tokenValid = true
 				break
 			} else {
-				fmt.Printf("OPA Plugin Error: invalid token (pk: %T)", pubkey.Size())
+				fmt.Println(fmt.Sprintf("OPA Plugin Error: invalid token (pk: %T)", pubkey.Size()))
 			}
 		}
 
