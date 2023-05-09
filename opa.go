@@ -4,26 +4,12 @@ package opa_traefik_plugin
 import (
 	"bytes"
 	"context"
-	"crypto/rsa"
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
-)
-
-// nolint
-var (
-	// LoggerDEBUG level.
-	LoggerDEBUG = log.New(ioutil.Discard, "opa: debug:", log.Ldate|log.Ltime|log.Lshortfile)
-	// LoggerINFO level.
-	LoggerINFO = log.New(ioutil.Discard, "opa: info:", log.Ldate|log.Ltime|log.Lshortfile)
-	// LoggerERROR level.
-	LoggerERROR = log.New(ioutil.Discard, "opa: error:", log.Ldate|log.Ltime|log.Lshortfile)
 )
 
 // Config the plugin configuration.
@@ -49,8 +35,6 @@ type Opa struct {
 
 // New created a new Opa plugin.
 func New(_ context.Context, next http.Handler, config *Config, _ string) (http.Handler, error) {
-	SetLogger(config.LogLevel)
-
 	return &Opa{
 		next:     next,
 		endpoint: config.Endpoint,
@@ -84,13 +68,11 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 
 		tokenValid := false
-		var publicKey *rsa.PublicKey
 		for _, key := range jwk.Keys {
 			pubkey, err := key.GetPublicKey()
 			if err != nil {
 				continue
 			}
-			publicKey = pubkey
 
 			if token.Verify(pubkey) {
 				tokenValid = true
@@ -98,21 +80,13 @@ func (opa *Opa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			}
 		}
 
-		keys, err := json.Marshal(jwk)
-		if err == nil {
-			LoggerDEBUG.Printf("fetch keys result: '%s'", string(keys))
-		} else {
-			LoggerDEBUG.Printf("error: '%s'", err.Error())
-		}
-
-		if publicKey == nil {
-			LoggerDEBUG.Printf("public key is nil")
-		} else {
-			LoggerDEBUG.Printf("public key: '%T'", publicKey.Size())
-		}
-
 		if !tokenValid {
 			http.Error(rw, "Unauthorized: invalid token", http.StatusUnauthorized)
+			return
+		}
+
+		if token.IsExpire() {
+			http.Error(rw, "Unauthorized: expired token", http.StatusUnauthorized)
 			return
 		}
 
@@ -192,22 +166,4 @@ func validatePolicies(endpoint, allow string, input Input) (bool, error) {
 	}
 
 	return allowed, nil
-}
-
-// SetLogger define global logger based in logLevel conf.
-func SetLogger(level string) {
-	switch level {
-	case "ERROR":
-		LoggerERROR.SetOutput(os.Stderr)
-	case "INFO":
-		LoggerERROR.SetOutput(os.Stderr)
-		LoggerINFO.SetOutput(os.Stdout)
-	case "DEBUG":
-		LoggerERROR.SetOutput(os.Stderr)
-		LoggerINFO.SetOutput(os.Stdout)
-		LoggerDEBUG.SetOutput(os.Stdout)
-	default:
-		LoggerERROR.SetOutput(os.Stderr)
-		LoggerINFO.SetOutput(os.Stdout)
-	}
 }

@@ -6,7 +6,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
+	"time"
 )
 
 // Token Deconstructed header token.
@@ -15,6 +17,15 @@ type Token struct {
 	header    []byte
 	payload   map[string]interface{}
 	signature []byte
+}
+
+// IsExpire return true if token is expired.
+func (token *Token) IsExpire() bool {
+	exp := int64(math.Floor(token.payload["exp"].(float64)))
+	if exp < (time.Now().UnixNano() / 1000000000) {
+		return true
+	}
+	return false
 }
 
 // Verify return true if token is valid.
